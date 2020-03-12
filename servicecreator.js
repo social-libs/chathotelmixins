@@ -24,6 +24,11 @@ function createServiceMixin (execlib, chatclientlib) {
     var job = new chatclientlib.AllConversationsOfUserFetcherJob(this.chatConversationNotificationEvent, this.fetchChatConversationsForUser.bind(this), username);
     return job.go();
   };
+  ChatHotelServiceMixin.prototype.initiateChatConversationsWithUsers = function (username, usernames) {
+    //non-queued
+    var job = new chatclientlib.ConversationsOfUserForUsersInitiatorJob(this.chatConversationNotificationEvent, this.initiateChatConversationsForUserWithUsers.bind(this), username, usernames);
+    return job.go();
+  };
   ChatHotelServiceMixin.prototype.getChatMessages = function (userid, conversationid, oldestmessageid, howmany) {
     //non-queued
     var job = new chatclientlib.MessageFetcherJob(this.chatConversationNotificationEvent, this.fetchChatMessagesForConversation.bind(this), userid, conversationid, oldestmessageid, howmany);
@@ -35,9 +40,43 @@ function createServiceMixin (execlib, chatclientlib) {
   ChatHotelServiceMixin.prototype.fetchChatConversationsForUser = execSuite.dependentServiceMethod([], ['Chat'], function (chatsink, username, defer) {
     qlib.promise2defer(chatsink.call('getAllConversations', username), defer);
   });
+  ChatHotelServiceMixin.prototype.initiateChatConversationsForUserWithUsers = execSuite.dependentServiceMethod([], ['Chat'], function (chatsink, username, usernames, defer) {
+    qlib.promise2defer(chatsink.call('initiateChatConversationsWithUsers', username, usernames), defer);
+  });
+  ChatHotelServiceMixin.prototype.markMessageRcvd = execSuite.dependentServiceMethod([], ['Chat'], function (chatsink, userid, conversationid, messageid, defer) {
+    if (!userid) {
+      defer.reject(new lib.Error('NO_CHAT_USERID', 'You must specify the chat userid'));
+      return;
+    }
+    if (!conversationid) {
+      defer.reject(new lib.Error('NO_CHAT_CONVERSATIONID', 'You must specify the chat conversationid'));
+      return;
+    }
+    if (!messageid) {
+      defer.reject(new lib.Error('NO_CHAT_MESSAGEID', 'You must specify the chat messageid'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('markMessageRcvd', this.apartmentName2OuterName(userid), conversationid, messageid), defer);
+  });
+  ChatHotelServiceMixin.prototype.markMessageSeen = execSuite.dependentServiceMethod([], ['Chat'], function (chatsink, userid, conversationid, messageid, defer) {
+    if (!userid) {
+      defer.reject(new lib.Error('NO_CHAT_USERID', 'You must specify the chat userid'));
+      return;
+    }
+    if (!conversationid) {
+      defer.reject(new lib.Error('NO_CHAT_CONVERSATIONID', 'You must specify the chat conversationid'));
+      return;
+    }
+    if (!messageid) {
+      defer.reject(new lib.Error('NO_CHAT_MESSAGEID', 'You must specify the chat messageid'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('markMessageSeen', this.apartmentName2OuterName(userid), conversationid, messageid), defer);
+  });
   ChatHotelServiceMixin.prototype.sendChatMessage = execSuite.dependentServiceMethod([], ['Chat'], function (chatsink, from, togroup, to, msg, defer) {
     if (!from) {
       defer.reject(new lib.Error('NO_CHAT_SENDER', 'You must specify the message sender'));
+      return;
     }
     if (!(togroup || to)) {
       defer.reject(new lib.Error('NO_CHAT_RECIPIENT', 'Your must specify either the receiving group or the receiving peer'));
@@ -74,8 +113,12 @@ function createServiceMixin (execlib, chatclientlib) {
     lib.inheritMethods(klass, ChatHotelServiceMixin
       ,'getChatConversations'
       ,'fetchChatConversationsForUser'
+      ,'initiateChatConversationsWithUsers'
+      ,'initiateChatConversationsForUserWithUsers'
       ,'getChatMessages'
       ,'fetchChatMessagesForConversation'
+      ,'markMessageRcvd'
+      ,'markMessageSeen'
       ,'sendChatMessage'
       ,'onChatSink'
       ,'onChatNotification'
