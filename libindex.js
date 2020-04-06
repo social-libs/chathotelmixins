@@ -1,9 +1,9 @@
-function createLib (execlib, chatclientlib) {
+function createLib (execlib, chatclientlib, vararglib) {
   'use strict';
 
   return {
     mixins: {
-      service: require('./servicecreator')(execlib, chatclientlib)
+      service: require('./servicecreator')(execlib, chatclientlib, vararglib)
     }
   };
 }
