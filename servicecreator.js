@@ -78,6 +78,7 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     klass.prototype['markMessageRcvd'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], markMessageRcvdFunc);
     klass.prototype['markMessageSeen'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], markMessageSeenFunc);
     klass.prototype['sendChatMessage'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], sendChatMessageFunc);
+    klass.prototype['editChatMessage'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], editChatMessageFunc);
     realm = null;
   }
 
@@ -140,7 +141,7 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     }
     qlib.promise2defer(chatsink.call('markMessageSeen', this.apartmentName2OuterName(userid), conversationid, messageid), defer);
   }
-  function sendChatMessageFunc (chatsink, from, togroup, to, msg, defer) {
+  function sendChatMessageFunc (chatsink, from, togroup, to, msg, options, defer) {
     if (!from) {
       defer.reject(new lib.Error('NO_CHAT_SENDER', 'You must specify the message sender'));
       return;
@@ -153,7 +154,22 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
       defer.reject(new lib.Error('NO_CHAT_MESSAGE', 'You must specify the message to be sent'));
       return;
     }
-    qlib.promise2defer(chatsink.call('processNewMessage', this.apartmentName2OuterName(from), togroup, to, msg), defer);
+    qlib.promise2defer(chatsink.call('processNewMessage', this.apartmentName2OuterName(from), togroup, to, msg, options), defer);
+  }
+  function editChatMessageFunc (chatsink, from, togroup, to, msg, defer) {
+    if (!from) {
+      defer.reject(new lib.Error('NO_CHAT_SENDER', 'You must specify the message sender'));
+      return;
+    }
+    if (!(togroup || to)) {
+      defer.reject(new lib.Error('NO_CHAT_RECIPIENT', 'Your must specify either the receiving group or the receiving peer'));
+      return;
+    }
+    if (!lib.isString(msg) && msg.length) {
+      defer.reject(new lib.Error('NO_CHAT_MESSAGE', 'You must specify the message to be sent'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('editMessage', this.apartmentName2OuterName(from), togroup, to, msg), defer);
   }
   //endof functions for dependentServiceMethod
   //functions for other methods
