@@ -79,6 +79,8 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     klass.prototype['markMessageSeen'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], markMessageSeenFunc);
     klass.prototype['sendChatMessage'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], sendChatMessageFunc);
     klass.prototype['editChatMessage'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], editChatMessageFunc);
+    klass.prototype['reportChatActivity'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], reportChatActivityFunc);
+    klass.prototype['createNewChatGroupWithMembers'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], createNewChatGroupWithMembersFunc);
     realm = null;
   }
 
@@ -156,7 +158,7 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     }
     qlib.promise2defer(chatsink.call('processNewMessage', this.apartmentName2OuterName(from), togroup, to, msg, options), defer);
   }
-  function editChatMessageFunc (chatsink, from, togroup, to, msg, defer) {
+  function editChatMessageFunc (chatsink, from, togroup, to, msg, options, defer) {
     if (!from) {
       defer.reject(new lib.Error('NO_CHAT_SENDER', 'You must specify the message sender'));
       return;
@@ -169,7 +171,33 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
       defer.reject(new lib.Error('NO_CHAT_MESSAGE', 'You must specify the message to be sent'));
       return;
     }
-    qlib.promise2defer(chatsink.call('editMessage', this.apartmentName2OuterName(from), togroup, to, msg), defer);
+    qlib.promise2defer(chatsink.call('editMessage', this.apartmentName2OuterName(from), togroup, to, msg, options), defer);
+  }
+  function reportChatActivityFunc (chatsink, userid, conversationid, defer) {
+    if (!userid) {
+      defer.reject(new lib.Error('NO_CHAT_USERID', 'You must specify the chat userid'));
+      return;
+    }
+    if (!conversationid) {
+      defer.reject(new lib.Error('NO_CHAT_CONVERSATIONID', 'You must specify the chat conversationid'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('reportChatActivity', this.apartmentName2OuterName(userid), conversationid), defer);
+  }
+  function createNewChatGroupWithMembersFunc (chatsink, creatorid, groupname, membersarry, defer) {
+    if (!creatorid) {
+      defer.reject(new lib.Error('NO_CHAT_GROUP_CREATOR_ID', 'You must specify the new chat group creatorid'));
+      return;
+    }
+    if (!groupname) {
+      defer.reject(new lib.Error('NO_CHAT_GROUP_NAME', 'You must specify the chat group name'));
+      return;
+    }
+    if (!lib.isArray(membersarry)) {
+      defer.reject(new lib.Error('NO_CHAT_GROUP_MEMBERS', 'You must specify the chat group members as an array'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('createNewGroupWithMembers', this.apartmentName2OuterName(creatorid), groupname, membersarry), defer);
   }
   //endof functions for dependentServiceMethod
   //functions for other methods
@@ -204,7 +232,7 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
   function getChatMessagesFuncCreator (realm) {
     return function getChatMessagesFunc (userid, conversationid, oldestmessageid, howmany) {
       //non-queued
-      var evnt, job;
+      var evnt, job, ret, _rlm;
       if (!this.chatConversationNotificationEvents) {
         return q([]);
       }
@@ -213,7 +241,11 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
         return q([]);
       }
       job = new chatclientlib.MessageFetcherJob(evnt, this['fetchChatMessagesForConversation'+'On'+realm].bind(this), userid, conversationid, oldestmessageid, howmany);
-      return job.go();
+      ret = job.go();
+      _rlm = realm;
+      ret.then(null, null, markMessageRcvdOnRealmer.bind(this, _rlm));
+      _rlm = null;
+      return ret;
     };
   }
   function onChatSinkFunc (realm, csink) {
@@ -242,6 +274,12 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     this.tellApartment(this.outerName2ApartmentName(username), 'acknowledgeChatNotification', [realm, ntf]);
   }
   //endof functions for other methods
+  
+  //statics, "this" matters
+  function markMessageRcvdOnRealmer (rlm, msgtomarkobj) {
+    this['markMessageRcvd'+'On'+rlm](msgtomarkobj.userid, msgtomarkobj.conversationid, msgtomarkobj.messageid);
+  }
+  //endof statics
 
 
   return ChatHotelServiceMixin;
