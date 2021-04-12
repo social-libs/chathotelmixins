@@ -81,6 +81,7 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
     klass.prototype['editChatMessage'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], editChatMessageFunc);
     klass.prototype['reportChatActivity'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], reportChatActivityFunc);
     klass.prototype['createNewChatGroupWithMembers'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], createNewChatGroupWithMembersFunc);
+    klass.prototype['removeConversation'+'On'+realm] = execSuite.dependentServiceMethod([], [realm], removeConversationFunc);
     realm = null;
   }
 
@@ -198,6 +199,13 @@ function createServiceMixin (execlib, chatclientlib, vararglib) {
       return;
     }
     qlib.promise2defer(chatsink.call('createNewGroupWithMembers', this.apartmentName2OuterName(creatorid), groupname, membersarry), defer);
+  }
+  function removeConversationFunc (chatsink, conversationid, defer) {
+    if (!conversationid) {
+      defer.reject(new lib.Error('NO_CHAT_CONVERSATIONID', 'You must specify the chat conversationid'));
+      return;
+    }
+    qlib.promise2defer(chatsink.call('removeConversation', conversationid), defer);
   }
   //endof functions for dependentServiceMethod
   //functions for other methods
